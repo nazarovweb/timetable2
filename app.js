@@ -144,18 +144,47 @@ function groupAllGroups(lessons) {
 }
 
 function buildScheduleUI(dayLessons) {
-  // time -> lessons
+  // time -> lessons (faqat dars borlarini yig'amiz)
   const map = new Map();
-  for (const t of TIMES) map.set(t, []);
   for (const l of dayLessons) {
-    if (!map.has(l.time)) map.set(l.time, []);
-    map.get(l.time).push(l);
+    const time = String(l.time || "").trim();
+    const subject = String(l.subject || "").trim();
+
+    // himoya: time yo'q yoki fan yo'q bo'lsa skip
+    if (!time || !subject) continue;
+
+    // tushlikni umuman ko'rsatmaymiz
+    if (time === "13:20-14:20") continue;
+
+    if (!map.has(time)) map.set(time, []);
+    map.get(time).push(l);
   }
+
+  // vaqt bo'yicha tartiblash uchun
+  const timeOrder = new Map(TIMES.map((t, i) => [t, i]));
+
+  const timesWithLessons = Array.from(map.keys()).sort((a, b) => {
+    const ai = timeOrder.has(a) ? timeOrder.get(a) : 999;
+    const bi = timeOrder.has(b) ? timeOrder.get(b) : 999;
+    return ai - bi;
+  });
 
   const root = document.createElement("div");
   root.className = "grid";
 
-  for (const t of TIMES) {
+  // Agar bu kunda umuman dars bo'lmasa
+  if (timesWithLessons.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "slot";
+    empty.innerHTML = `<div class="empty">Bu kunda dars yo‘q.</div>`;
+    root.appendChild(empty);
+    return root;
+  }
+
+  for (const t of timesWithLessons) {
+    const list = map.get(t) || [];
+
+    // slot card
     const slot = document.createElement("section");
     slot.className = "slot";
 
@@ -166,38 +195,23 @@ function buildScheduleUI(dayLessons) {
     timeEl.className = "slot-time";
     timeEl.textContent = t;
 
-    const list = map.get(t) || [];
     const countEl = document.createElement("div");
     countEl.className = "slot-count";
-
-    if (t === "13:20-14:20") {
-      countEl.textContent = "Tushlik";
-    } else {
-      countEl.textContent = list.length ? `${list.length} ta dars` : "Dars yo‘q";
-    }
+    countEl.textContent = `${list.length} ta dars`;
 
     head.appendChild(timeEl);
     head.appendChild(countEl);
     slot.appendChild(head);
 
-    if (t === "13:20-14:20") {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "Tushlik vaqti";
-      slot.appendChild(empty);
-      root.appendChild(slot);
-      continue;
-    }
+    // darslarni tartiblash (xohlasang)
+    // hozir bitta slot ichida bir nechta dars bo'lishi mumkin: shuni room/teacher bo'yicha barqaror qilamiz
+    list.sort((a, b) => {
+      const ar = String(a.room || "");
+      const br = String(b.room || "");
+      return ar.localeCompare(br);
+    });
 
-    if (!list.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "Bu vaqtda dars yo‘q.";
-      slot.appendChild(empty);
-      root.appendChild(slot);
-      continue;
-    }
-
+    // lessons
     for (const l of list) {
       const item = document.createElement("div");
       item.className = "lesson";
@@ -497,7 +511,7 @@ async function reloadData() {
     // day select default
     if (!els.day.value) fillDaySelect(state.day);
 
-    setStatus(`✅ Yuklandi: ${lessons.length} ta dars. (Kurs ${state.course})`);
+    setStatus(`✅ Yuklandi: (Kurs ${state.course})`);
 
     renderTabs();
   } catch (e) {

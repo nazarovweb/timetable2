@@ -1,5 +1,3 @@
-// app.js ichida
-// app.js ichida
 const COURSE_SHEETS = {
   1: {
     publishedId: "2PACX-1vQjmxDQIL8RumnyaMdY7W_bm-T-4Agk6snf1S7-KCieFUgopBaZH7tIRFAZtsoNjvIGvuOjULOys5-K",
@@ -208,13 +206,15 @@ function matrixToLessonEvents(rows, course) {
 }
 async function loadCourse(course) {
   const csv = await fetchCourseCsv(course);
-  console.log(" CSV:", csv);
   let rows = parseCSV(csv);
-  console.log("ROWS:", rows);
+  console.log(rows);
   
   rows = normalizeToHeaderWidth(rows);
+  console.log(rows);
   const meta = buildColumnMeta(rows[0], rows[1]);
   const lessons = matrixToLessonEvents(rows, course);
+  console.log(lessons);
+  
   return { rows, lessons };
 }
 
