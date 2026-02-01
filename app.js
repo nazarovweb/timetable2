@@ -504,14 +504,12 @@ async function reloadData() {
     const lessons = await fetchCourseLessons(state.course);
     state.lessons = lessons;
 
-    // groups list
     const groups = groupAllGroups(lessons);
     fillGroupSelect(groups, state.group);
 
-    // day select default
     if (!els.day.value) fillDaySelect(state.day);
 
-    setStatus(`✅ Yuklandi: (Kurs ${state.course})`);
+    setStatus(`✅ Yuklandi: Kurs ${state.course}`);
 
     renderTabs();
   } catch (e) {
@@ -568,6 +566,17 @@ function init() {
 
   setupAutoRefresh();
   reloadData();
+  if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register("./service-worker.js");
+      console.log("✅ Service Worker registered");
+    } catch (err) {
+      console.warn("❌ SW register error:", err);
+    }
+  });
+}
+
 }
 
 init();
