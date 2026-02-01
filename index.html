@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dars jadvali (Google Sheet)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Dars jadvali</h1>
+
+<div class="controls">
+  <label>
+    Kurs:
+    <select id="courseSelect">
+      <option value="1">1-kurs</option>
+      <option value="2" selected>2-kurs</option>
+      <option value="3">3-kurs</option>
+      <option value="4">4-kurs</option>
+    </select>
+  </label>
+
+  <label>
+    Kun:
+    <select id="daySelect"></select>
+  </label>
+
+  <label>
+    Guruh:
+    <select id="groupSelect"></select>
+  </label>
+
+  <button id="reloadBtn" type="button">Yangilash</button>
+
+  <label class="autorefresh">
+    <input type="checkbox" id="autoRefresh" />
+    Auto (60s)
+  </label>
+</div>
+
+
+    <p id="status" class="status">Yuklanmoqda...</p>
+  </header>
+
+  <main class="container">
+    <div id="schedule" class="schedule"></div>
+  </main>
+
+  <script src="./test.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

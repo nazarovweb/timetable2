@@ -1,0 +1,559 @@
+// app.js
+const DAYS_UZ = ["Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba","Yakshanba"];
+const DAY_EN_TO_UZ = {
+  Monday:"Dushanba",
+  Tuesday:"Seshanba",
+  Wednesday:"Chorshanba",
+  Thursday:"Payshanba",
+  Friday:"Juma",
+  Saturday:"Shanba",
+  Sunday:"Yakshanba",
+};
+
+const TIMES = [
+  "09:00-10:20",
+  "10:30-11:50",
+  "12:00-13:20",
+  "13:20-14:20", // lunch
+  "14:20-15:40",
+  "15:50-17:10",
+  "17:20-18:40",
+  "18:50-20:10",
+];
+
+const STATIC_ROOMS = [
+  "221 Room","222 Room","223 Room","230 Room","232 Room","234 Lecture Room","235 Room",
+  "236 Lecture Room","238 Lecture Room","239 Room","240 Room","243 Room",
+  "317 Room","318 Room","319 Room","320 Room","321 Room","322 Room","323 Lecture Room",
+  "325 Room","326 Room","327 Room","329 Room"
+];
+
+const els = {
+  course: document.getElementById("courseSelect"),
+  day: document.getElementById("daySelect"),
+  group: document.getElementById("groupSelect"),
+  reload: document.getElementById("reloadBtn"),
+  auto: document.getElementById("autoRefresh"),
+  status: document.getElementById("status"),
+  schedule: document.getElementById("schedule"),
+};
+
+let state = {
+  course: 2,
+  day: null,
+  group: null,
+  lessons: [],
+  timer: null,
+  tab: "schedule",
+};
+
+function savePrefs() {
+  localStorage.setItem("tt.course", String(state.course));
+  localStorage.setItem("tt.day", String(state.day || ""));
+  localStorage.setItem("tt.group", String(state.group || ""));
+  localStorage.setItem("tt.auto", els.auto.checked ? "1" : "0");
+}
+
+function loadPrefs() {
+  const c = Number(localStorage.getItem("tt.course") || "2");
+  state.course = Number.isFinite(c) ? c : 2;
+  state.day = localStorage.getItem("tt.day") || "";
+  state.group = localStorage.getItem("tt.group") || "";
+  els.auto.checked = localStorage.getItem("tt.auto") === "1";
+}
+
+function todayUz() {
+  const d = new Date();
+  const day = d.getDay(); // 0 Sunday..6 Saturday
+  // UZ: Monday index 0
+  const map = ["Yakshanba","Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba"];
+  return map[day];
+}
+
+function setStatus(text) {
+  els.status.textContent = text;
+}
+
+function uniq(arr) {
+  return Array.from(new Set(arr));
+}
+
+function normalizeDayName(dayStr) {
+  const s = String(dayStr || "").trim();
+  return DAY_EN_TO_UZ[s] || s; // Monday->Dushanba, yoki allaqachon uz bo'lsa o'zi
+}
+
+function fillDaySelect(selected) {
+  els.day.innerHTML = "";
+  for (const d of DAYS_UZ) {
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.textContent = d;
+    els.day.appendChild(opt);
+  }
+  els.day.value = selected || todayUz();
+}
+
+function fillGroupSelect(groups, selected) {
+  els.group.innerHTML = "";
+  for (const g of groups) {
+    const opt = document.createElement("option");
+    opt.value = g;
+    opt.textContent = g;
+    els.group.appendChild(opt);
+  }
+  if (selected && groups.includes(selected)) els.group.value = selected;
+  else els.group.value = groups[0] || "";
+}
+
+async function fetchCourseLessons(course) {
+  if (typeof window.loadCourse !== "function") {
+    throw new Error("loadCourse() topilmadi. test.js oxiriga window.loadCourse = loadCourse; qo‘shilganini tekshir.");
+  }
+  const { lessons } = await window.loadCourse(course);
+
+  // day ni uzbekka normalize qilamiz
+  return lessons.map(l => ({
+    ...l,
+    day: normalizeDayName(l.day),
+    teacher: String(l.teacher || "").trim(),
+    room: String(l.room || "").trim(),
+    subject: String(l.subject || "").trim(),
+    groups: Array.isArray(l.groups) ? l.groups.map(x => String(x).trim()) : [],
+    time: String(l.time || "").trim(),
+  }));
+}
+
+function lessonsForGroupAndDay(lessons, group, day) {
+  const g = String(group || "").trim();
+  const d = String(day || "").trim();
+  return lessons.filter(l => l.day === d && Array.isArray(l.groups) && l.groups.includes(g));
+}
+
+function lessonsForDay(lessons, day) {
+  const d = String(day || "").trim();
+  return lessons.filter(l => l.day === d);
+}
+
+function groupAllGroups(lessons) {
+  const all = [];
+  for (const l of lessons) {
+    if (Array.isArray(l.groups)) all.push(...l.groups);
+  }
+  return uniq(all.map(x => String(x).trim()).filter(Boolean)).sort();
+}
+
+function buildScheduleUI(dayLessons) {
+  // time -> lessons
+  const map = new Map();
+  for (const t of TIMES) map.set(t, []);
+  for (const l of dayLessons) {
+    if (!map.has(l.time)) map.set(l.time, []);
+    map.get(l.time).push(l);
+  }
+
+  const root = document.createElement("div");
+  root.className = "grid";
+
+  for (const t of TIMES) {
+    const slot = document.createElement("section");
+    slot.className = "slot";
+
+    const head = document.createElement("div");
+    head.className = "slot-head";
+
+    const timeEl = document.createElement("div");
+    timeEl.className = "slot-time";
+    timeEl.textContent = t;
+
+    const list = map.get(t) || [];
+    const countEl = document.createElement("div");
+    countEl.className = "slot-count";
+
+    if (t === "13:20-14:20") {
+      countEl.textContent = "Tushlik";
+    } else {
+      countEl.textContent = list.length ? `${list.length} ta dars` : "Dars yo‘q";
+    }
+
+    head.appendChild(timeEl);
+    head.appendChild(countEl);
+    slot.appendChild(head);
+
+    if (t === "13:20-14:20") {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Tushlik vaqti";
+      slot.appendChild(empty);
+      root.appendChild(slot);
+      continue;
+    }
+
+    if (!list.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Bu vaqtda dars yo‘q.";
+      slot.appendChild(empty);
+      root.appendChild(slot);
+      continue;
+    }
+
+    for (const l of list) {
+      const item = document.createElement("div");
+      item.className = "lesson";
+
+      const subj = document.createElement("div");
+      subj.className = "subject";
+      subj.textContent = l.subject || "(Noma’lum fan)";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const teacher = document.createElement("span");
+      teacher.className = "pill";
+      teacher.textContent = `👨‍🏫 ${l.teacher || "—"}`;
+
+      const room = document.createElement("span");
+      room.className = "pill";
+      room.textContent = `🏫 ${l.room || "—"}`;
+
+      meta.appendChild(teacher);
+      meta.appendChild(room);
+
+      // birlashgan dars bo'lsa ko'rsatamiz
+      if (Array.isArray(l.groups) && l.groups.length > 1) {
+        const g = document.createElement("span");
+        g.className = "pill";
+        g.textContent = `👥 ${l.groups.join(", ")}`;
+        meta.appendChild(g);
+      }
+
+      item.appendChild(subj);
+      item.appendChild(meta);
+      slot.appendChild(item);
+    }
+
+    root.appendChild(slot);
+  }
+
+  return root;
+}
+
+function buildTeachersUI(lessonsDay) {
+  const byTeacher = new Map();
+  for (const l of lessonsDay) {
+    const key = l.teacher || "Noma’lum";
+    if (!byTeacher.has(key)) byTeacher.set(key, []);
+    byTeacher.get(key).push(l);
+  }
+
+  const teachers = Array.from(byTeacher.keys()).sort();
+  const root = document.createElement("div");
+  root.className = "grid";
+
+  if (!teachers.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Bu kunda darslar topilmadi.";
+    root.appendChild(empty);
+    return root;
+  }
+
+  for (const t of teachers) {
+    const slot = document.createElement("section");
+    slot.className = "slot";
+
+    const head = document.createElement("div");
+    head.className = "slot-head";
+
+    const name = document.createElement("div");
+    name.className = "slot-time";
+    name.textContent = t;
+
+    const count = document.createElement("div");
+    count.className = "slot-count";
+    count.textContent = `${byTeacher.get(t).length} ta dars`;
+
+    head.appendChild(name);
+    head.appendChild(count);
+    slot.appendChild(head);
+
+    const list = byTeacher.get(t).sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
+    for (const l of list) {
+      const item = document.createElement("div");
+      item.className = "lesson";
+
+      const subj = document.createElement("div");
+      subj.className = "subject";
+      subj.textContent = `${l.time} — ${l.subject}`;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const room = document.createElement("span");
+      room.className = "pill";
+      room.textContent = `🏫 ${l.room || "—"}`;
+
+      const groups = document.createElement("span");
+      groups.className = "pill";
+      groups.textContent = `👥 ${Array.isArray(l.groups) ? l.groups.join(", ") : ""}`;
+
+      meta.appendChild(room);
+      meta.appendChild(groups);
+
+      item.appendChild(subj);
+      item.appendChild(meta);
+      slot.appendChild(item);
+    }
+
+    root.appendChild(slot);
+  }
+
+  return root;
+}
+
+function buildRoomsUI(lessonsDay) {
+  // time -> set(rooms used)
+  const used = new Map();
+  for (const t of TIMES) used.set(t, new Set());
+
+  for (const l of lessonsDay) {
+    if (!l.time || !l.room) continue;
+    if (!used.has(l.time)) used.set(l.time, new Set());
+    used.get(l.time).add(l.room);
+  }
+
+  const root = document.createElement("div");
+  root.className = "grid";
+
+  for (const t of TIMES) {
+    const slot = document.createElement("section");
+    slot.className = "slot";
+
+    const head = document.createElement("div");
+    head.className = "slot-head";
+
+    const timeEl = document.createElement("div");
+    timeEl.className = "slot-time";
+    timeEl.textContent = t;
+
+    const count = document.createElement("div");
+    count.className = "slot-count";
+
+    if (t === "13:20-14:20") {
+      count.textContent = "Tushlik";
+    } else {
+      const usedRooms = used.get(t) || new Set();
+      const freeCount = STATIC_ROOMS.filter(r => !usedRooms.has(r)).length;
+      count.textContent = `${freeCount} ta bo‘sh`;
+    }
+
+    head.appendChild(timeEl);
+    head.appendChild(count);
+    slot.appendChild(head);
+
+    if (t === "13:20-14:20") {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Tushlik vaqti";
+      slot.appendChild(empty);
+      root.appendChild(slot);
+      continue;
+    }
+
+    const usedRooms = used.get(t) || new Set();
+    const freeRooms = STATIC_ROOMS.filter(r => !usedRooms.has(r));
+
+    const wrap = document.createElement("div");
+    wrap.className = "lesson";
+
+    const title = document.createElement("div");
+    title.className = "subject";
+    title.textContent = "Bo‘sh xonalar";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+
+    if (!freeRooms.length) {
+      const p = document.createElement("span");
+      p.className = "pill";
+      p.textContent = "Bo‘sh xona topilmadi";
+      meta.appendChild(p);
+    } else {
+      for (const r of freeRooms.slice(0, 18)) { // ko‘p bo‘lsa ham ekranni to‘ldirmasin
+        const p = document.createElement("span");
+        p.className = "pill";
+        p.textContent = r;
+        meta.appendChild(p);
+      }
+      if (freeRooms.length > 18) {
+        const more = document.createElement("span");
+        more.className = "pill";
+        more.textContent = `+${freeRooms.length - 18} ta`;
+        meta.appendChild(more);
+      }
+    }
+
+    wrap.appendChild(title);
+    wrap.appendChild(meta);
+    slot.appendChild(wrap);
+    root.appendChild(slot);
+  }
+
+  return root;
+}
+
+function mountBaseLayout() {
+  els.schedule.innerHTML = "";
+
+  const tabs = document.createElement("div");
+
+  tabs.innerHTML = `
+    <section id="tabSchedule" class="tab active"></section>
+    <section id="tabTeachers" class="tab"></section>
+    <section id="tabRooms" class="tab"></section>
+
+    <nav class="appbar">
+      <div class="appbar-inner">
+        <button class="appbtn active" data-tab="schedule" type="button">📅 Jadval</button>
+        <button class="appbtn" data-tab="teachers" type="button">👨‍🏫 Ustozlar</button>
+        <button class="appbtn" data-tab="rooms" type="button">🏫 Xonalar</button>
+      </div>
+    </nav>
+  `;
+
+  els.schedule.appendChild(tabs);
+
+  tabs.querySelectorAll(".appbtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      state.tab = tab;
+
+      tabs.querySelectorAll(".appbtn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      tabs.querySelector("#tabSchedule").classList.toggle("active", tab === "schedule");
+      tabs.querySelector("#tabTeachers").classList.toggle("active", tab === "teachers");
+      tabs.querySelector("#tabRooms").classList.toggle("active", tab === "rooms");
+
+      renderTabs();
+    });
+  });
+}
+
+function renderTabs() {
+  const day = els.day.value;
+  const group = els.group.value;
+
+  const tabSchedule = document.getElementById("tabSchedule");
+  const tabTeachers = document.getElementById("tabTeachers");
+  const tabRooms = document.getElementById("tabRooms");
+
+  // Header
+  tabSchedule.innerHTML = "";
+  tabTeachers.innerHTML = "";
+  tabRooms.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "day-header";
+  head.innerHTML = `
+    <span class="badge">📘 Kurs: ${state.course}</span>
+    <span class="badge">📅 ${day}</span>
+    <span class="badge">👥 ${group || "-"}</span>
+  `;
+
+  if (state.tab === "schedule") tabSchedule.appendChild(head);
+  if (state.tab === "teachers") tabTeachers.appendChild(head.cloneNode(true));
+  if (state.tab === "rooms") tabRooms.appendChild(head.cloneNode(true));
+
+  // Schedule tab (group+day)
+  const dayLessonsForGroup = lessonsForGroupAndDay(state.lessons, group, day);
+  tabSchedule.appendChild(buildScheduleUI(dayLessonsForGroup));
+
+  // Teachers tab (all lessons in day)
+  const dayAll = lessonsForDay(state.lessons, day);
+  tabTeachers.appendChild(buildTeachersUI(dayAll));
+
+  // Rooms tab
+  tabRooms.appendChild(buildRoomsUI(dayAll));
+
+  savePrefs();
+}
+
+async function reloadData() {
+  try {
+    setStatus("⏳ Ma’lumot yuklanmoqda...");
+    els.reload.disabled = true;
+
+    state.course = Number(els.course.value);
+
+    const lessons = await fetchCourseLessons(state.course);
+    state.lessons = lessons;
+
+    // groups list
+    const groups = groupAllGroups(lessons);
+    fillGroupSelect(groups, state.group);
+
+    // day select default
+    if (!els.day.value) fillDaySelect(state.day);
+
+    setStatus(`✅ Yuklandi: ${lessons.length} ta dars. (Kurs ${state.course})`);
+
+    renderTabs();
+  } catch (e) {
+    console.error(e);
+    setStatus("❌ Xatolik: " + (e?.message || e));
+  } finally {
+    els.reload.disabled = false;
+  }
+}
+
+function setupAutoRefresh() {
+  if (state.timer) clearInterval(state.timer);
+  state.timer = null;
+
+  if (!els.auto.checked) return;
+
+  state.timer = setInterval(() => {
+    reloadData();
+  }, 60 * 1000);
+}
+
+function init() {
+  loadPrefs();
+
+  els.course.value = String(state.course);
+
+  fillDaySelect(state.day || todayUz());
+  mountBaseLayout();
+
+  els.course.addEventListener("change", () => {
+    state.course = Number(els.course.value);
+    savePrefs();
+    reloadData();
+  });
+
+  els.day.addEventListener("change", () => {
+    state.day = els.day.value;
+    savePrefs();
+    renderTabs();
+  });
+
+  els.group.addEventListener("change", () => {
+    state.group = els.group.value;
+    savePrefs();
+    renderTabs();
+  });
+
+  els.reload.addEventListener("click", () => reloadData());
+
+  els.auto.addEventListener("change", () => {
+    savePrefs();
+    setupAutoRefresh();
+  });
+
+  setupAutoRefresh();
+  reloadData();
+}
+
+init();
