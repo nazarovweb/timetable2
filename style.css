@@ -221,3 +221,252 @@ button{
   color: var(--text);
   background: rgba(37,99,235,.12);
 }
+.modal.hidden { display: none; }
+
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-card{
+  width: 100%;
+  max-width: 420px;
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+
+.modal-card h2{
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.muted{
+  margin: 0 0 14px;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.field{ margin: 12px 0; }
+.field label{ display:block; font-size: 13px; color:#cbd5e1; margin-bottom:6px; }
+
+select{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: #0b1222;
+  color: #e5e7eb;
+  outline: none;
+}
+
+.actions{ margin-top: 14px; display:flex; justify-content: flex-end; }
+.primary{
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+}
+
+.segmented{
+  display:flex;
+  gap:10px;
+}
+.seg-btn{
+  flex: 1;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #0b1222;
+  color: #e5e7eb;
+}
+.seg-btn.active{
+  background: #1d4ed8;
+  border-color: rgba(255,255,255,.18);
+}
+
+.fab{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #0f172a;
+  color: #e5e7eb;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  z-index: 9998;
+}
+
+/* ========== ONBOARDING & FEEDBACK STYLES ========== */
+.feedback-fab {
+  right: 78px !important; /* feedback button next to settings */
+}
+
+.welcome-card {
+  text-align: center;
+}
+
+.welcome-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.welcome-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+/* Role Selection */
+.role-selection {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 20px;
+  background: rgba(255,255,255,.04);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-btn:hover {
+  background: rgba(37,99,235,.12);
+  border-color: rgba(37,99,235,.45);
+}
+
+.role-icon {
+  font-size: 48px;
+}
+
+.role-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(180deg, var(--primary), var(--primary2));
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Feedback */
+textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0b1222;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 120px;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.feedback-status {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.feedback-status.success {
+  background: rgba(34,197,94,.15);
+  color: var(--good);
+  border: 1px solid rgba(34,197,94,.3);
+}
+
+.feedback-status.error {
+  background: rgba(239,68,68,.15);
+  color: var(--bad);
+  border: 1px solid rgba(239,68,68,.3);
+}
+
+.feedback-status.info {
+  background: rgba(37,99,235,.15);
+  color: var(--primary);
+  border: 1px solid rgba(37,99,235,.3);
+}
+
+/* Modal Animations */
+.modal {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.modal.active {
+  opacity: 1;
+}
+
+.modal .modal-card {
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal.active .modal-card {
+  transform: scale(1);
+}

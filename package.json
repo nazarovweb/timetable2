@@ -1,0 +1,14 @@
+{
+  "name": "timetable-html",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx live-server --port=8080 --open=/ --no-browser",
+    "start": "npx live-server --port=8080 --open=/"
+  },
+  "dependencies": {
+    "device.js": "^2.3.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

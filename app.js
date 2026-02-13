@@ -1,13 +1,50 @@
 // app.js
-const DAYS_UZ = ["Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba","Yakshanba"];
+const DAYS_UZ = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+const ALL_COURSES_CACHE_KEY = "timetable:allCoursesCache"; // optional
+let allCoursesLessonsCache = null; // runtime cache
+
+async function loadAllCoursesLessons() {
+  // agar allaqachon yuklangan bo'lsa qaytaramiz
+  if (allCoursesLessonsCache) return allCoursesLessonsCache;
+
+  // localStorage’dan 5 minutlik cache qilish (ixtiyoriy)
+  const cached = localStorage.getItem(ALL_COURSES_CACHE_KEY);
+  if (cached) {
+    try {
+      const obj = JSON.parse(cached);
+      if (Date.now() - obj.ts < 5 * 60 * 1000) {
+        allCoursesLessonsCache = obj.lessons;
+        return allCoursesLessonsCache;
+      }
+    } catch { }
+  }
+
+  // 1..4 kursni parallel yuklash
+  const results = await Promise.all([1, 2, 3, 4].map(async (c) => {
+    const { lessons } = await loadCourse(c);
+    return lessons;
+  }));
+
+  const merged = results.flat();
+  allCoursesLessonsCache = merged;
+
+  localStorage.setItem(ALL_COURSES_CACHE_KEY, JSON.stringify({ ts: Date.now(), lessons: merged }));
+
+  return merged;
+}
+
+function getTodayUz() {
+  const d = new Date();
+  return DAYS_UZ[d.getDay()]; // 0 yakshanba
+}
 const DAY_EN_TO_UZ = {
-  Monday:"Dushanba",
-  Tuesday:"Seshanba",
-  Wednesday:"Chorshanba",
-  Thursday:"Payshanba",
-  Friday:"Juma",
-  Saturday:"Shanba",
-  Sunday:"Yakshanba",
+  Monday: "Dushanba",
+  Tuesday: "Seshanba",
+  Wednesday: "Chorshanba",
+  Thursday: "Payshanba",
+  Friday: "Juma",
+  Saturday: "Shanba",
+  Sunday: "Yakshanba",
 };
 
 const TIMES = [
@@ -22,10 +59,10 @@ const TIMES = [
 ];
 
 const STATIC_ROOMS = [
-  "221 Room","222 Room","223 Room","230 Room","232 Room","234 Lecture Room","235 Room",
-  "236 Lecture Room","238 Lecture Room","239 Room","240 Room","243 Room",
-  "317 Room","318 Room","319 Room","320 Room","321 Room","322 Room","323 Lecture Room",
-  "325 Room","326 Room","327 Room","329 Room"
+  "221 Room", "222 Room", "223 Room", "230 Room", "232 Room", "234 Lecture Room", "235 Room",
+  "236 Lecture Room", "238 Lecture Room", "239 Room", "240 Room", "243 Room",
+  "317 Room", "318 Room", "319 Room", "320 Room", "321 Room", "322 Room", "323 Lecture Room",
+  "325 Room", "326 Room", "327 Room", "329 Room"
 ];
 
 const els = {
@@ -46,7 +83,6 @@ let state = {
   timer: null,
   tab: "schedule",
 };
-
 function savePrefs() {
   localStorage.setItem("tt.course", String(state.course));
   localStorage.setItem("tt.day", String(state.day || ""));
@@ -66,7 +102,7 @@ function todayUz() {
   const d = new Date();
   const day = d.getDay(); // 0 Sunday..6 Saturday
   // UZ: Monday index 0
-  const map = ["Yakshanba","Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba"];
+  const map = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
   return map[day];
 }
 
@@ -292,7 +328,7 @@ function buildTeachersUI(lessonsDay) {
     head.appendChild(count);
     slot.appendChild(head);
 
-    const list = byTeacher.get(t).sort((a,b)=>TIMES.indexOf(a.time)-TIMES.indexOf(b.time));
+    const list = byTeacher.get(t).sort((a, b) => TIMES.indexOf(a.time) - TIMES.indexOf(b.time));
     for (const l of list) {
       const item = document.createElement("div");
       item.className = "lesson";
@@ -567,16 +603,210 @@ function init() {
   setupAutoRefresh();
   reloadData();
   if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try {
-      await navigator.serviceWorker.register("./service-worker.js");
-      console.log("✅ Service Worker registered");
-    } catch (err) {
-      console.warn("❌ SW register error:", err);
+    window.addEventListener("load", async () => {
+      try {
+        await navigator.serviceWorker.register("./service-worker.js");
+        console.log("✅ Service Worker registered");
+      } catch (err) {
+        console.warn("❌ SW register error:", err);
+      }
+    });
+  }
+
+}
+const PROFILE_KEY = "timetable:profile";
+// profile example:
+// { role: "student", course: 2, group: "24-302 AI", teacher: "", day: "Dushanba" }
+
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); }
+  catch { return null; }
+}
+
+function saveProfile(p) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+}
+
+
+function showModal() {
+  document.getElementById("setupModal").classList.remove("hidden");
+}
+function hideModal() {
+  document.getElementById("setupModal").classList.add("hidden");
+}
+
+// ====== UI BINDINGS ======
+function setupFirstRunUI() {
+  const modal = document.getElementById("setupModal");
+  const roleSeg = document.getElementById("roleSeg");
+  const courseSelect = document.getElementById("courseSelect");
+  const saveBtn = document.getElementById("saveSetupBtn");
+  const openSettingsBtn = document.getElementById("openSettingsBtn");
+
+  let selectedRole = "student";
+
+  // Role toggle
+  roleSeg.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-role]");
+    if (!btn) return;
+    selectedRole = btn.dataset.role;
+
+    // active class
+    roleSeg.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+
+  // Save
+  saveBtn.addEventListener("click", async () => {
+    const course = Number(courseSelect.value);
+
+    const profile = { role: selectedRole, course };
+    saveProfile(profile);
+    hideModal();
+
+    // Profil saqlandi -> endi asosiy logikani ishga tushiramiz
+    await onProfileReady(profile);
+  });
+
+  // Open settings (re-config)
+  openSettingsBtn?.addEventListener("click", () => {
+    // oldingi qiymatni UIga qo'yamiz
+    const p = loadProfile();
+    if (p) {
+      selectedRole = p.role || "student";
+      courseSelect.value = String(p.course || 2);
+
+      // active update
+      roleSeg.querySelectorAll(".seg-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.role === selectedRole);
+      });
+    }
+    showModal();
+  });
+
+  // Modal fonini bosganda yopilmasin (majburiy tanlash uchun)
+  // agar xohlasang yopilishini:
+  // modal.addEventListener("click", (e) => { if (e.target === modal) hideModal(); });
+}
+
+// ====== APP INIT ======
+async function initApp() {
+  const p = loadProfile();
+
+  if (!p?.role || !p?.course || !p?.day || (p.role === "student" && !p.group) || (p.role === "teacher" && !p.teacher)) {
+    await openSetupWizard();
+    return;
+  }
+
+  await onProfileReady(p);
+}
+
+
+// ====== WHEN PROFILE READY ======
+async function onProfileReady(profile) {
+  console.log("✅ PROFILE:", profile);
+
+  // statusga yozish (agar sendagi #status bo'lsa)
+  const status = document.getElementById("status");
+  if (status) {
+    status.textContent = `${profile.role === "student" ? "Student" : "Teacher"} • ${profile.course}-kurs`;
+  }
+
+}
+
+// start
+initApp();
+async function openSetupWizard() {
+  const modal = document.getElementById("setupModal");
+  const roleSeg = document.getElementById("roleSeg");
+  const courseSelect = document.getElementById("courseSelectModal");
+  const daySelect = document.getElementById("daySelect");
+
+  const groupField = document.getElementById("groupField");
+  const teacherField = document.getElementById("teacherField");
+  const groupSelectSetup = document.getElementById("groupSelect");
+  const teacherSelectSetup = document.getElementById("teacherSelect");
+
+  const saveBtn = document.getElementById("saveSetupBtn");
+
+  // defaults
+  let selectedRole = "student";
+  daySelect.value = getTodayUz();
+
+  // role toggle
+  roleSeg.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-role]");
+    if (!btn) return;
+    selectedRole = btn.dataset.role;
+
+    roleSeg.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    // rolega qarab field ko'rsatish
+    if (selectedRole === "student") {
+      groupField.classList.remove("hidden");
+      teacherField.classList.add("hidden");
+    } else {
+      teacherField.classList.remove("hidden");
+      groupField.classList.add("hidden");
     }
   });
-}
 
-}
+  async function refreshGroupTeacherOptions() {
+    const course = Number(courseSelect.value);
 
+    // ⚠️ bu funksiya SENING test.js dagi loadCourse(course) bo'lishi kerak
+    const { lessons } = await loadCourse(course);
+
+    // student uchun group list
+    const groups = Array.from(new Set(
+      lessons.flatMap(l => Array.isArray(l.groups) ? l.groups : [])
+    )).sort();
+
+    // teacher uchun teacher list
+    const teachers = Array.from(new Set(
+      lessons.map(l => (l.teacher || "").trim()).filter(Boolean)
+    )).sort();
+
+    groupSelectSetup.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join("");
+    teacherSelectSetup.innerHTML = teachers.map(t => `<option value="${t}">${t}</option>`).join("");
+  }
+
+  // course o'zgarsa listni yangilash
+  courseSelect.addEventListener("change", refreshGroupTeacherOptions);
+
+  // modal ochilganda birinchi marta ham to'ldiramiz
+  await refreshGroupTeacherOptions();
+
+  modal.classList.remove("hidden");
+
+  saveBtn.onclick = async () => {
+    const course = Number(courseSelect.value);
+    const day = daySelect.value;
+
+    const profile = {
+      role: selectedRole,
+      course,
+      day,
+      group: selectedRole === "student" ? groupSelectSetup.value : "",
+      teacher: selectedRole === "teacher" ? teacherSelectSetup.value : ""
+    };
+
+    saveProfile(profile);
+    modal.classList.add("hidden");
+
+    await onProfileReady(profile);
+  };
+}
 init();
+
+// ========== NEW ONBOARDING & FEEDBACK INTEGRATION ==========
+import { initOnboarding } from './onboarding.js';
+import { initFeedback } from './feedback.js';
+
+//Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+  initOnboarding();
+  initFeedback();
+  window.reloadData = reloadData;
+});

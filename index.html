@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="uz">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PDP Dars Jadvali</title>
   <link rel="manifest" href="./manifest.json">
-<meta name="mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PDP Dars Jadvali">
   <meta name="msapplication-TileColor" content="#0b0f17">
@@ -14,48 +15,197 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="stylesheet" href="./style.css" />
 </head>
+
 <body>
   <header class="topbar">
     <h1>Dars jadvali</h1>
 
-<div class="controls">
-  <label>
-    Kurs:
-    <select id="courseSelect">
-      <option value="1">1-kurs</option>
-      <option value="2" selected>2-kurs</option>
-      <option value="3">3-kurs</option>
-      <option value="4">4-kurs</option>
-    </select>
-  </label>
+    <div class="controls">
+      <label>
+        Kurs:
+        <select id="courseSelect">
+          <option value="1">1-kurs</option>
+          <option value="2" selected>2-kurs</option>
+          <option value="3">3-kurs</option>
+          <option value="4">4-kurs</option>
+        </select>
+      </label>
 
-  <label>
-    Kun:
-    <select id="daySelect"></select>
-  </label>
+      <div class="field">
+        <label for="daySelect">Kun</label>
+        <select id="daySelect">
+          <option>Dushanba</option>
+          <option>Seshanba</option>
+          <option>Chorshanba</option>
+          <option>Payshanba</option>
+          <option>Juma</option>
+          <option>Shanba</option>
+          <option>Yakshanba</option>
+        </select>
+      </div>
 
-  <label>
-    Guruh:
-    <select id="groupSelect"></select>
-  </label>
+      <div class="field" id="groupField">
+        <label for="groupSelectSetup">Guruh</label>
+        <select id="groupSelect"></select>
+      </div>
 
-  <button id="reloadBtn" type="button">Yangilash</button>
+      <div class="field hidden" id="teacherField">
+        <label for="teacherSelectSetup">Ustoz</label>
+        <select id="teacherSelect"></select>
+      </div>
+      <button id="reloadBtn" type="button">Yangilash</button>
 
-  <label class="autorefresh">
-    <input type="checkbox" id="autoRefresh" />
-    Auto (60s)
-  </label>
-</div>
-
-
+      <label class="autorefresh">
+        <input type="checkbox" id="autoRefresh" />
+        Auto (60s)
+      </label>
+    </div>
     <p id="status" class="status">Yuklanmoqda...</p>
   </header>
-
   <main class="container">
     <div id="schedule" class="schedule"></div>
   </main>
+  <!-- SETTINGS / FIRST RUN MODAL -->
+  <div id="setupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="modal-card">
+      <h2 id="setupTitle">Sozlash</h2>
+      <p class="muted">Birinchi marta kiryapsiz. Iltimos, rol va kursni tanlang.</p>
 
-  <script src="./test.js"></script>
-  <script src="./app.js"></script>
+      <div class="form">
+        <div class="field">
+          <label>Kim siz?</label>
+          <div class="segmented" id="roleSeg">
+            <button type="button" data-role="student" class="seg-btn active">👨‍🎓 Student</button>
+            <button type="button" data-role="teacher" class="seg-btn">👨‍🏫 Teacher</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="courseSelect">Kurs</label>
+          <select id="courseSelectModal">
+            <option value="1">1-kurs</option>
+            <option value="2">2-kurs</option>
+            <option value="3">3-kurs</option>
+            <option value="4">4-kurs</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button id="saveSetupBtn" type="button" class="primary">Saqlash</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pastdagi fixed nav / settings tugmasi bo'lsa -->
+  <button id="feedbackBtn" class="fab feedback-fab" type="button" title="Taklif yuboring">💬</button>
+  <button id="openSettingsBtn" class="fab" type="button" title="Sozlash">⚙️</button>
+
+  <!-- ========== WELCOME MODAL ========== -->
+  <div id="welcomeModal" class="modal hidden">
+    <div class="modal-card welcome-card">
+      <div class="welcome-icon">👋</div>
+      <h2>Xush kelibsiz!</h2>
+      <p class="welcome-text">PDP Dars Jadvali ilovasiga xush kelibsiz! Keling, biz sizga yordam beraylik.</p>
+      <button id="welcomeContinueBtn" class="btn-primary">Davom ettirish</button>
+    </div>
+  </div>
+
+  <!-- ========== ROLE SELECTION MODAL ========== -->
+  <div id="roleModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Siz kimsiz?</h2>
+      <p class="muted">Dasturni sozlash uchun rolni tanlang</p>
+      <div class="role-selection">
+        <button id="selectStudentBtn" class="role-btn">
+          <div class="role-label">Student</div>
+        </button>
+        <button id="selectTeacherBtn" class="role-btn">
+          <div class="role-label">O'qituvchi</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PROFILE SETUP MODAL ========== -->
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="profileModalTitle">Ma'lumotlaringiz</h2>
+
+      <!-- Student fields -->
+      <div id="studentFields" class="form hidden">
+        <div class="field">
+          <label for="profileCourseSelect">Kurs</label>
+          <select id="profileCourseSelect">
+            <option value="1">1-kurs</option>
+            <option value="2" selected>2-kurs</option>
+            <option value="3">3-kurs</option>
+            <option value="4">4-kurs</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="profileGroupSelect">Guruh</label>
+          <select id="profileGroupSelect"></select>
+        </div>
+      </div>
+
+      <!-- Teacher fields -->
+      <div id="teacherFields" class="form hidden">
+        <div class="field">
+          <label for="profileTeacherSelect">O'qituvchi</label>
+          <select id="profileTeacherSelect"></select>
+        </div>
+        <div class="field">
+          <label for="profileDaySelect">Boshlang'ich kun</label>
+          <select id="profileDaySelect"></select>
+        </div>
+      </div>
+
+      <button id="saveProfileBtn" class="btn-primary">Saqlash</button>
+    </div>
+  </div>
+
+  <!-- ========== FEEDBACK SUGGESTION MODAL ========== -->
+  <div id="feedbackSuggestionModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="welcome-icon">✨</div>
+      <h2>Tayyor!</h2>
+      <p class="welcome-text">Sizning takliflaringiz rivojlanishga yordam beradi. Fikr-mulohazalaringiz bormi?</p>
+      <div class="actions">
+        <button id="feedbackSuggestionYes" class="btn-primary">Ha, taklif beraman</button>
+        <button id="feedbackSuggestionNo" class="btn-secondary">Yo'q, rahmat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== FEEDBACK MODAL ========== -->
+  <div id="feedbackModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Taklif yuboring</h2>
+      <p class="muted">Sizning fikrlaringiz biz uchun muhim! Takliflaringizni yozing.</p>
+
+      <div class="form">
+        <div class="field">
+          <textarea id="feedbackText" placeholder="Taklifingizni bu yerga yozing..." rows="6"
+            maxlength="1000"></textarea>
+          <div id="feedbackCharCount" class="char-count">0/1000</div>
+        </div>
+
+        <div id="feedbackStatus" class="feedback-status" style="display:none;"></div>
+
+        <div class="actions">
+          <button id="feedbackSubmitBtn" class="btn-primary">Yuborish</button>
+          <button id="feedbackCloseBtn" class="btn-secondary">Bekor qilish</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./node_modules/device.js/dist/device.umd.js"></script>
+  <script type="module" src="./test.js"></script>
+  <script type="module" src="./app.js"></script>
+  <script type="module" src="./onboarding.js"></script>
+  <script type="module" src="./feedback.js"></script>
 </body>
+
 </html>

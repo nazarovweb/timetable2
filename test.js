@@ -1,22 +1,23 @@
-const COURSE_SHEETS = {
-  1: {
-    publishedId: "2PACX-1vQjmxDQIL8RumnyaMdY7W_bm-T-4Agk6snf1S7-KCieFUgopBaZH7tIRFAZtsoNjvIGvuOjULOys5-K",
-    gid: 0,
-  },
-  2: {
-    publishedId: "2PACX-1vSl7bSI3rO61zJ7R1cXHpRQitwtygoZbVhZpeLzgqEvz6f84Va2I95tXBy5LeHFg_3JtxkBZR6fpDQ2",
-    gid: 0,
-  },
-  3: {
-    publishedId: "2PACX-1vRNnttb_SHtMret_V6ze6pZNYTpEVZLYCpVbpcv5O_1sxM_AR2YlJZCzBRuuprNWVU5WxUCHf_Yz6mx",
-    gid: 0,
-  },
-  4: {
-    publishedId: "2PACX-1vT126RO-PqYp2FAZUV4u_KIEHrFdN57jMfTY2QWLpvXfbhDk_MC-Af7liFyeAylOQVAYDiURe1rTis7",
-    gid: 0,
-  },
-};
 
+const COURSE_SHEETS = {
+    1: {
+        publishedId: "2PACX-1vQjmxDQIL8RumnyaMdY7W_bm-T-4Agk6snf1S7-KCieFUgopBaZH7tIRFAZtsoNjvIGvuOjULOys5-K",
+        gid: 0,
+    },
+    2: {
+        publishedId: "2PACX-1vSl7bSI3rO61zJ7R1cXHpRQitwtygoZbVhZpeLzgqEvz6f84Va2I95tXBy5LeHFg_3JtxkBZR6fpDQ2",
+        gid: 0,
+    },
+    3: {
+        publishedId: "2PACX-1vRNnttb_SHtMret_V6ze6pZNYTpEVZLYCpVbpcv5O_1sxM_AR2YlJZCzBRuuprNWVU5WxUCHf_Yz6mx",
+        gid: 0,
+    },
+    4: {
+        publishedId: "2PACX-1vT126RO-PqYp2FAZUV4u_KIEHrFdN57jMfTY2QWLpvXfbhDk_MC-Af7liFyeAylOQVAYDiURe1rTis7",
+        gid: 0,
+    },
+};
+let courseData = JSON.parse(localStorage.getItem("timetable:profile")) ? JSON.parse(localStorage.getItem("timetable:profile")) : { role: "student", course: 2 };
 const DAY_MAP = {
     Monday: "Dushanba",
     Tuesday: "Seshanba",
@@ -28,21 +29,19 @@ const DAY_MAP = {
 };
 
 function makePublishedCsvUrl(publishedId, gid) {
-  return `https://docs.google.com/spreadsheets/d/e/${publishedId}/pub?output=csv&gid=${gid}`;
+    return `https://docs.google.com/spreadsheets/d/e/${publishedId}/pub?output=csv&gid=${gid}`;
 }
 
 async function fetchCourseCsv(course) {
-  const cfg = COURSE_SHEETS[course];
-  if (!cfg) throw new Error("Course config topilmadi: " + course);
+    const cfg = COURSE_SHEETS[course];
+    if (!cfg) throw new Error("Course config topilmadi: " + course);
 
-  const url = makePublishedCsvUrl(cfg.publishedId, cfg.gid);
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error("CSV fetch error: " + res.status);
+    const url = makePublishedCsvUrl(cfg.publishedId, cfg.gid);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("CSV fetch error: " + res.status);
 
-  return await res.text();
+    return await res.text();
 }
-
-
 function parseCSV(text) {
     // Windows CRLF ni normal qilamiz
     text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -205,19 +204,27 @@ function matrixToLessonEvents(rows, course) {
     return lessons;
 }
 async function loadCourse(course) {
-  const csv = await fetchCourseCsv(course);
-  let rows = parseCSV(csv);
-  console.log(rows);
-  
-  rows = normalizeToHeaderWidth(rows);
-  console.log(rows);
-  const meta = buildColumnMeta(rows[0], rows[1]);
-  const lessons = matrixToLessonEvents(rows, course);
-  console.log(lessons);
-  
-  return { rows, lessons };
+    const csv = await fetchCourseCsv(course);
+    let rows = parseCSV(csv);
+
+    rows = normalizeToHeaderWidth(rows);
+    const meta = buildColumnMeta(rows[0], rows[1]);
+    const lessons = matrixToLessonEvents(rows, course);
+
+    return { rows, lessons };
 }
 
+import { getClientInfo } from "./helper.js";
+import { reportDeviceToTelegram } from "./device-reporter.js";
 
-loadCourse(2);
+getClientInfo().then((info) => console.log("CLIENT INFO:", info));
+
 window.loadCourse = loadCourse;
+loadCourse(courseData.course);
+
+// ========== DEVICE MA'LUMOTLARINI TELEGRAM BOTGA YUBORISH ==========
+// Sahifa yuklanganida avtomatik yuboriladi (background'da)
+// UI'ni to'xtatmaydi, asynchronous ishlaydi
+reportDeviceToTelegram().catch(err => {
+    console.warn('Device ma\'lumotlarini yuborishda xato:', err);
+});
