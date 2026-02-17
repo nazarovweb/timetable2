@@ -468,6 +468,7 @@ function mountBaseLayout() {
         <button class="appbtn active" data-tab="schedule" type="button">📅 Jadval</button>
         <button class="appbtn" data-tab="teachers" type="button">👨‍🏫 Ustozlar</button>
         <button class="appbtn" data-tab="rooms" type="button">🏫 Xonalar</button>
+        <button class="appbtn" data-tab="settings" type="button">⚙️ Sozlash</button>
       </div>
     </nav>
   `;
@@ -477,6 +478,13 @@ function mountBaseLayout() {
   tabs.querySelectorAll(".appbtn").forEach(btn => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
+
+      // Handle settings tab separately
+      if (tab === "settings") {
+        openSettingsModal();
+        return;
+      }
+
       state.tab = tab;
 
       tabs.querySelectorAll(".appbtn").forEach(b => b.classList.remove("active"));
@@ -532,7 +540,7 @@ function renderTabs() {
 
 async function reloadData() {
   try {
-    setStatus("⏳ Ma’lumot yuklanmoqda...");
+    setStatus("⏳ Ma'lumot yuklanmoqda...");
     els.reload.disabled = true;
 
     state.course = Number(els.course.value);
@@ -549,7 +557,6 @@ async function reloadData() {
 
     renderTabs();
   } catch (e) {
-    console.error(e);
     setStatus("❌ Xatolik: " + (e?.message || e));
   } finally {
     els.reload.disabled = false;
@@ -570,9 +577,12 @@ function setupAutoRefresh() {
 function init() {
   loadPrefs();
 
+  // Set course from saved preferences
   els.course.value = String(state.course);
 
+  // Set day from saved preferences
   fillDaySelect(state.day || todayUz());
+
   mountBaseLayout();
 
   els.course.addEventListener("change", () => {
@@ -601,14 +611,16 @@ function init() {
   });
 
   setupAutoRefresh();
+
+  // Load data - this will populate groups and auto-select saved group
   reloadData();
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
         await navigator.serviceWorker.register("./service-worker.js");
-        console.log("✅ Service Worker registered");
       } catch (err) {
-        console.warn("❌ SW register error:", err);
+        // Service worker registration failed silently
       }
     });
   }
@@ -634,6 +646,106 @@ function showModal() {
 function hideModal() {
   document.getElementById("setupModal").classList.add("hidden");
 }
+
+// ====== OPEN SETTINGS MODAL ======
+async function openSettingsModal() {
+  const modal = document.getElementById("setupModal");
+  const roleSeg = document.getElementById("roleSeg");
+  const courseSelectModal = document.getElementById("courseSelectModal");
+  const saveBtn = document.getElementById("saveSetupBtn");
+
+  // Load current settings
+  const currentCourse = Number(els.course.value);
+  const currentGroup = els.group.value;
+
+  // Set modal values to current settings
+  courseSelectModal.value = String(currentCourse);
+
+  // Update role buttons (assume student for now)
+  roleSeg.querySelectorAll(".seg-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.role === "student");
+  });
+
+  // Load groups for current course
+  try {
+    const lessons = await fetchCourseLessons(currentCourse);
+    const groups = groupAllGroups(lessons);
+
+    // Get group select from modal
+    const groupSelectModal = document.getElementById("groupSelect");
+    if (groupSelectModal) {
+      groupSelectModal.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join("");
+      // Set current group as selected
+      if (currentGroup && groups.includes(currentGroup)) {
+        groupSelectModal.value = currentGroup;
+      }
+    }
+
+    // Handle course change to reload groups
+    const handleCourseChange = async () => {
+      const newCourse = Number(courseSelectModal.value);
+      const newLessons = await fetchCourseLessons(newCourse);
+      const newGroups = groupAllGroups(newLessons);
+
+      if (groupSelectModal) {
+        groupSelectModal.innerHTML = newGroups.map(g => `<option value="${g}">${g}</option>`).join("");
+      }
+    };
+
+    courseSelectModal.removeEventListener("change", handleCourseChange);
+    courseSelectModal.addEventListener("change", handleCourseChange);
+
+    // Show modal
+    modal.classList.remove("hidden");
+    modal.classList.add("active");
+
+    // Handle save button
+    const handleSave = async () => {
+      const newCourse = Number(courseSelectModal.value);
+      const newGroup = groupSelectModal ? groupSelectModal.value : "";
+
+      // Update main controls
+      els.course.value = String(newCourse);
+      state.course = newCourse;
+      state.group = newGroup;
+
+      // Save preferences
+      savePrefs();
+
+      // Reload data with new course
+      await reloadData();
+
+      // Close modal
+      modal.classList.remove("active");
+      modal.classList.add("hidden");
+
+      // Remove event listeners
+      saveBtn.removeEventListener("click", handleSave);
+      courseSelectModal.removeEventListener("change", handleCourseChange);
+    };
+
+    // Remove any existing listeners and add new one
+    saveBtn.removeEventListener("click", handleSave);
+    saveBtn.addEventListener("click", handleSave);
+
+    // Close on background click
+    const handleBackgroundClick = (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("active");
+        modal.classList.add("hidden");
+        modal.removeEventListener("click", handleBackgroundClick);
+        saveBtn.removeEventListener("click", handleSave);
+        courseSelectModal.removeEventListener("change", handleCourseChange);
+      }
+    };
+    modal.addEventListener("click", handleBackgroundClick);
+  } catch (error) {
+    // If loading fails, still show modal but without groups
+    modal.classList.remove("hidden");
+    modal.classList.add("active");
+  }
+}
+
 
 // ====== UI BINDINGS ======
 function setupFirstRunUI() {
@@ -704,8 +816,6 @@ async function initApp() {
 
 // ====== WHEN PROFILE READY ======
 async function onProfileReady(profile) {
-  console.log("✅ PROFILE:", profile);
-
   // statusga yozish (agar sendagi #status bo'lsa)
   const status = document.getElementById("status");
   if (status) {
@@ -714,7 +824,27 @@ async function onProfileReady(profile) {
 
 }
 
+// ====== HEADER COLLAPSE FUNCTIONALITY ======
+function initHeaderCollapse() {
+  const headerToggleBtn = document.getElementById("headerToggleBtn");
+  const topbar = document.querySelector(".topbar");
+
+  if (!headerToggleBtn || !topbar) return;
+
+  // Load saved state
+  const isCollapsed = localStorage.getItem("headerCollapsed") === "true";
+  if (isCollapsed) {
+    topbar.classList.add("collapsed");
+  }
+
+  headerToggleBtn.addEventListener("click", () => {
+    topbar.classList.toggle("collapsed");
+    localStorage.setItem("headerCollapsed", topbar.classList.contains("collapsed"));
+  });
+}
+
 // start
+initHeaderCollapse();
 initApp();
 async function openSetupWizard() {
   const modal = document.getElementById("setupModal");

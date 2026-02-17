@@ -10,47 +10,47 @@
   --bg-primary: #0a0e1a;
   --bg-secondary: #111827;
   --bg-tertiary: #1a202c;
-  
+
   /* Card backgrounds with blur support */
   --card-glass: rgba(17, 24, 39, 0.7);
   --card-solid: #161b2e;
-  
+
   /* Text colors */
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
   --text-muted: #9ca3af;
   --text-dim: #6b7280;
-  
+
   /* Accent colors - Vibrant modern palette */
   --primary: #3b82f6;
   --primary-dark: #2563eb;
   --primary-light: #60a5fa;
-  
+
   --accent: #8b5cf6;
   --accent-dark: #7c3aed;
-  
+
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
-  
+
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-normal: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.15);
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.4);
-  
+
   /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
-  
+
   /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
@@ -58,7 +58,7 @@
   --space-lg: 16px;
   --space-xl: 24px;
   --space-2xl: 32px;
-  
+
   /* Animation */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
@@ -98,7 +98,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
   pointer-events: none;
@@ -119,16 +119,62 @@ body::before {
   border-bottom: 1px solid var(--border-normal);
   padding: var(--space-lg);
   box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
 }
 
 .topbar h1 {
   font-size: 1.5rem;
   font-weight: 800;
-  margin-bottom: var(--space-md);
   background: linear-gradient(135deg, var(--primary-light), var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin: 0;
+}
+
+.header-toggle {
+  min-height: 36px;
+  width: 36px;
+  padding: 0;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--border-normal);
+  border-radius: var(--radius-md);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.header-toggle:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary);
+  transform: translateY(0);
+}
+
+.toggle-icon {
+  display: inline-block;
+  font-size: 0.875rem;
+  transition: transform var(--transition-base);
+  color: var(--text-primary);
+}
+
+.topbar.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.topbar.collapsed .controls {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-bottom: 0;
 }
 
 /* ========================================
@@ -159,7 +205,10 @@ body::before {
   letter-spacing: 0.05em;
 }
 
-select, button, input, textarea {
+select,
+button,
+input,
+textarea {
   font-family: 'Inter', sans-serif;
   font-size: 0.875rem;
   border: none;
@@ -248,7 +297,8 @@ button:disabled {
   position: relative;
   z-index: 1;
   padding: var(--space-lg);
-  padding-bottom: 100px; /* Space for bottom nav */
+  padding-bottom: 100px;
+  /* Space for bottom nav */
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -267,6 +317,7 @@ button:disabled {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -394,7 +445,7 @@ button:disabled {
 
 .appbar-inner {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-sm);
   max-width: 600px;
   margin: 0 auto;
@@ -434,12 +485,13 @@ button:disabled {
 }
 
 /* ========================================
-   FLOATING ACTION BUTTONS
+   FLOATING ACTION BUTTON (Feedback)
 ======================================== */
 
 .fab {
   position: fixed;
   bottom: 80px;
+  right: var(--space-lg);
   width: 56px;
   height: 56px;
   border-radius: var(--radius-full);
@@ -466,15 +518,6 @@ button:disabled {
 
 .fab:active {
   transform: translateY(-2px) scale(1);
-}
-
-#feedbackBtn {
-  right: var(--space-lg);
-}
-
-#openSettingsBtn {
-  right: calc(var(--space-lg) + 72px);
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
 }
 
 /* ========================================
@@ -550,9 +593,19 @@ button:disabled {
 }
 
 @keyframes wave {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(20deg); }
-  75% { transform: rotate(-20deg); }
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(20deg);
+  }
+
+  75% {
+    transform: rotate(-20deg);
+  }
 }
 
 .welcome-text {
@@ -705,14 +758,30 @@ textarea {
   border-color: var(--border-strong);
 }
 
+.btn-danger {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  box-shadow: none;
+  margin-top: var(--space-md);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  transform: translateY(-2px);
+}
+
 .actions {
   display: flex;
+  flex-direction: column;
   gap: var(--space-md);
   margin-top: var(--space-xl);
 }
 
 .actions .btn-primary,
-.actions .btn-secondary {
+.actions .btn-secondary,
+.actions .btn-danger {
   flex: 1;
   margin-top: 0;
 }
@@ -753,33 +822,38 @@ textarea {
   :root {
     font-size: 14px;
   }
-  
+
   .topbar {
+    position: relative;
     padding: var(--space-md);
   }
-  
+
+  .header-toggle {
+    display: flex;
+  }
+
+  .controls {
+    max-height: 1000px;
+    overflow: hidden;
+    opacity: 1;
+    transition: max-height var(--transition-slow), opacity var(--transition-base), margin var(--transition-base);
+  }
+
   .container {
     padding: var(--space-md);
     padding-bottom: 100px;
   }
-  
+
   .modal-card {
     padding: var(--space-xl);
   }
-  
+
   .fab {
     width: 48px;
     height: 48px;
     bottom: 70px;
     font-size: 1.25rem;
-  }
-  
-  #feedbackBtn {
     right: var(--space-md);
-  }
-  
-  #openSettingsBtn {
-    right: calc(var(--space-md) + 60px);
   }
 }
 

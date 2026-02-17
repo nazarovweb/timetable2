@@ -16,11 +16,16 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 
-<body>
+<body oncontextmenu="return false;">
   <header class="topbar">
-    <h1>Dars jadvali</h1>
+    <div class="header-main">
+      <h1>Dars jadvali</h1>
+      <button id="headerToggleBtn" class="header-toggle" type="button" aria-label="Toggle controls">
+        <span class="toggle-icon">▼</span>
+      </button>
+    </div>
 
-    <div class="controls">
+    <div class="controls" id="headerControls">
       <label>
         Kurs:
         <select id="courseSelect">
@@ -65,6 +70,10 @@
   <main class="container">
     <div id="schedule" class="schedule"></div>
   </main>
+
+  <!-- Feedback button -->
+  <button id="feedbackBtn" class="fab feedback-fab" type="button" title="Taklif yuboring">💬</button>
+
   <!-- SETTINGS / FIRST RUN MODAL -->
   <div id="setupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
     <div class="modal-card">
@@ -90,16 +99,18 @@
           </select>
         </div>
 
+        <div class="field" id="groupFieldModal">
+          <label for="groupSelectModal">Guruh</label>
+          <select id="groupSelect"></select>
+        </div>
+
         <div class="actions">
-          <button id="saveSetupBtn" type="button" class="primary">Saqlash</button>
+          <button id="saveSetupBtn" type="button" class="btn-primary">Saqlash</button>
+          <button id="hardResetBtn" type="button" class="btn-danger" onclick="hardReset()">🔄 Hard Reset</button>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- Pastdagi fixed nav / settings tugmasi bo'lsa -->
-  <button id="feedbackBtn" class="fab feedback-fab" type="button" title="Taklif yuboring">💬</button>
-  <button id="openSettingsBtn" class="fab" type="button" title="Sozlash">⚙️</button>
 
   <!-- ========== WELCOME MODAL ========== -->
   <div id="welcomeModal" class="modal hidden">
@@ -201,6 +212,8 @@
     </div>
   </div>
 
+  <script src="./security.js"></script>
+  <script src="./reset.js"></script>
   <script src="./node_modules/device.js/dist/device.umd.js"></script>
   <script type="module" src="./test.js"></script>
   <script type="module" src="./app.js"></script>
